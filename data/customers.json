@@ -1,0 +1,74 @@
+[
+  {
+    "customer_id": "C001",
+    "name": "Jason Johnson",
+    "gender": "M",
+    "city": "Craig",
+    "state": "AK",
+    "job": "Commissioning editor",
+    "dob": "1997-06-17"
+  },
+  {
+    "customer_id": "C002",
+    "name": "Christopher Gregory",
+    "gender": "M",
+    "city": "Wauchula",
+    "state": "FL",
+    "job": "Teaching laboratory technician",
+    "dob": "1993-02-26"
+  },
+  {
+    "customer_id": "C003",
+    "name": "Kimberly Bush",
+    "gender": "F",
+    "city": "Dell City",
+    "state": "TX",
+    "job": "Hydrogeologist",
+    "dob": "1945-11-26"
+  },
+  {
+    "customer_id": "C004",
+    "name": "Tina Zimmerman",
+    "gender": "F",
+    "city": "Thomas",
+    "state": "OK",
+    "job": "Barrister",
+    "dob": "1986-05-01"
+  },
+  {
+    "customer_id": "C005",
+    "name": "Adam Santos",
+    "gender": "M",
+    "city": "Glendale",
+    "state": "CA",
+    "job": "Advertising account planner",
+    "dob": "1982-07-30"
+  },
+  {
+    "customer_id": "C006",
+    "name": "Julia Bell",
+    "gender": "F",
+    "city": "West Sayville",
+    "state": "NY",
+    "job": "Film/video editor",
+    "dob": "1990-06-25"
+  },
+  {
+    "customer_id": "C007",
+    "name": "Roberta Mccarthy",
+    "gender": "F",
+    "city": "Plymouth",
+    "state": "CT",
+    "job": "Herpetologist",
+    "dob": "1973-04-06"
+  },
+  {
+    "customer_id": "C008",
+    "name": "Gina Gomez",
+    "gender": "F",
+    "city": "Stirling",
+    "state": "NJ",
+    "job": "Science writer",
+    "dob": "1969-09-11"
+  }
+]
