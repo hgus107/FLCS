@@ -11,6 +11,14 @@ import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+import sys
+from pathlib import Path
+
+# REQUIREMENT: this file is launched as a script from mcp/, so the project root is
+# not on the import path until we put it there.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from rag.policy_index import search as policy_search
+
 load_dotenv()
 
 SN_URL = os.getenv("SERVICENOW_URL")
@@ -139,6 +147,12 @@ def get_customer_transactions(customer_id: str):
     """Fetch a customer's full transaction history"""
     return [tx for tx in transactions if tx["customer_id"] == customer_id]
 
+@mcp.tool()
+def search_policy(question: str):
+    """Search the bank's fraud policy for the rules covering a question — reporting
+    thresholds, structuring, customer liability, card blocking, escalation. Use this
+    whenever the answer depends on a bank rule rather than on transaction data."""
+    return policy_search(question, area="fraud")
 
 @mcp.tool()
 def create_fraud_case(transaction_id: str, reason: str):

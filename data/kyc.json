@@ -1,0 +1,90 @@
+[
+  {
+    "customer_id": "C001",
+    "name": "Jason Johnson",
+    "id_type": "Driving Licence",
+    "id_number": "****7890",
+    "id_expiry": "2027-05-18",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "Medium",
+    "last_review_date": "2025-05-17"
+  },
+  {
+    "customer_id": "C002",
+    "name": "Christopher Gregory",
+    "id_type": "Driving Licence",
+    "id_number": "****4578",
+    "id_expiry": "2031-03-14",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "Low",
+    "last_review_date": "2024-05-18"
+  },
+  {
+    "customer_id": "C003",
+    "name": "Kimberly Bush",
+    "id_type": "National ID",
+    "id_number": "****3407",
+    "id_expiry": "2029-02-11",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "High",
+    "last_review_date": "2025-08-18"
+  },
+  {
+    "customer_id": "C004",
+    "name": "Tina Zimmerman",
+    "id_type": "Passport",
+    "id_number": "****6796",
+    "id_expiry": "2030-06-19",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "High",
+    "last_review_date": "2024-09-17"
+  },
+  {
+    "customer_id": "C005",
+    "name": "Adam Santos",
+    "id_type": "Driving Licence",
+    "id_number": "****9541",
+    "id_expiry": "2019-08-14",
+    "address_verified": false,
+    "pep": false,
+    "risk_rating": "High",
+    "last_review_date": "2018-03-02"
+  },
+  {
+    "customer_id": "C006",
+    "name": "Julia Bell",
+    "id_type": "Driving Licence",
+    "id_number": "****2020",
+    "id_expiry": "2031-01-11",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "High",
+    "last_review_date": "2025-01-19"
+  },
+  {
+    "customer_id": "C007",
+    "name": "Roberta Mccarthy",
+    "id_type": "Driving Licence",
+    "id_number": "****6458",
+    "id_expiry": "2028-06-11",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "Low",
+    "last_review_date": "2024-04-12"
+  },
+  {
+    "customer_id": "C008",
+    "name": "Gina Gomez",
+    "id_type": "National ID",
+    "id_number": "****8339",
+    "id_expiry": "2027-02-15",
+    "address_verified": true,
+    "pep": false,
+    "risk_rating": "Medium",
+    "last_review_date": "2025-02-14"
+  }
+]

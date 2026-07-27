@@ -3,22 +3,27 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>FLCS Fraud Agent</title>
+  <title>FLCS Agent</title>
   <style>
     body { font: 15px/1.6 -apple-system, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
     #thread { margin: 24px 0; }
     .turn { padding: 12px 0; border-top: 1px solid #eee; }
     .who { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #888; }
     .body { white-space: pre-wrap; margin-top: 4px; }
-    #q { width: 100%; padding: 10px; font-size: 15px; }
+    #q { width: 100%; padding: 10px; font-size: 15px; font-family: inherit; resize: vertical; }
     button { margin-top: 8px; padding: 8px 18px; font-size: 15px; }
     #reset { background: none; border: none; color: #888; text-decoration: underline; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h2>Fraud Agent</h2>
+  <h2>FLCS — Fraud, Loan, Compliance &amp; Support</h2>
 
-  <input id="q" placeholder="Scan the latest day and give me the 1 most suspicious transaction.">
+  <textarea id="q" rows="5" placeholder="Ask about fraud / lending / compliance / support
+ - run the latest fraud scan
+ - list all pending loan applications
+ - run a compliance scan across pending card applications
+ - what is our policy on disputed transactions?"></textarea>
+
   <button id="go">Ask</button>
   <button id="reset">New conversation</button>
 
@@ -62,7 +67,10 @@
     }
 
     document.getElementById("go").onclick = ask;
-    box.addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+
+    box.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); }
+    });
 
     document.getElementById("reset").onclick = async () => {
       await fetch("/reset", {

@@ -1,7 +1,6 @@
-# AGENT: takes a question from the UI or CLI, sends it to the LLM along with the
-# list of tools the MCP server offers, runs whichever tool the LLM picks, feeds the
-# result back, and repeats until the LLM answers in plain text. Carries the previous
-# turns in and out so a follow-up like "yes, open it" still has context.
+# AGENT: takes a compliance question from the orchestrator or CLI, sends it to the
+# LLM along with the tools the compliance MCP server offers, runs whichever tool the
+# LLM picks, feeds the result back, and repeats until the LLM answers in plain text.
 
 import asyncio
 import json
@@ -15,12 +14,14 @@ from mcp.client.stdio import stdio_client
 MODEL = "claude-haiku-4-5"
 
 SYSTEM = (
-    "You are a fraud analyst assistant for a bank. "
-    "Use the available tools to scan a day's transactions, look up transactions, "
-    "customer profiles and customer history, and to open fraud tickets. "
-    "When you find something suspicious, explain your reasoning and then ASK the "
-    "analyst whether to open a ticket. Never call create_fraud_case until the "
-    "analyst has explicitly confirmed it in their message. "
+    "You are a compliance analyst assistant for a bank. "
+    "Use the available tools to list pending credit-card applications, pull KYC "
+    "records, screen names against the OFAC sanctions list, and run a full scan "
+    "across all applicants. "
+    "A sanctions match is never a conclusion on its own — name screening produces "
+    "false positives constantly, so report the similarity score and recommend "
+    "manual verification rather than declaring someone sanctioned. "
+    "Missing KYC on a non-customer applicant is normal, not a finding in itself. "
     "Answer in plain English once you have the data."
 )
 
@@ -50,7 +51,7 @@ async def run(user_request: str, history: list | None = None):
 
     # sys.executable = this venv's python, so the MCP server gets the same packages.
     server = StdioServerParameters(
-        command=sys.executable, args=["mcp/fraud_tools.py"]
+        command=sys.executable, args=["mcp/compliance_tools.py"]
     )
 
     async with stdio_client(server) as (read, write):
@@ -63,10 +64,8 @@ async def run(user_request: str, history: list | None = None):
             listed = await session.list_tools()
             # RESPONSE IN: the server's tool catalogue.
             tools = to_claude_tools(listed.tools)
-            print("AVAILABLE TOOLS:", [t["name"] for t in tools])
+            print("COMPLIANCE TOOLS:", [t["name"] for t in tools])
 
-            # REQUIREMENT: start from the previous turns so the analyst can say "yes"
-            # and the model still knows what it offered to do.
             messages = list(history or [])
             messages.append({"role": "user", "content": user_request})
 
@@ -92,11 +91,11 @@ async def run(user_request: str, history: list | None = None):
                 for block in reply.content:
                     if block.type != "tool_use":
                         continue
-                    print(f"MODEL CHOSE: {block.name}({block.input})")
+                    print(f"COMPLIANCE AGENT CHOSE: {block.name}({block.input})")
 
                     # REQUEST OUT: execute the model's chosen tool on the MCP server.
                     out = await session.call_tool(block.name, block.input)
-                    # RESPONSE IN: the real banking data.
+                    # RESPONSE IN: the real compliance data.
                     results.append(
                         {
                             "type": "tool_result",
@@ -107,14 +106,12 @@ async def run(user_request: str, history: list | None = None):
 
                 messages.append({"role": "user", "content": results})
 
-            answer = "\n".join(b.text for b in reply.content if b.type == "text")
-            return answer, messages
+            return "\n".join(b.text for b in reply.content if b.type == "text"), messages
 
 
 if __name__ == "__main__":
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise SystemExit("Set ANTHROPIC_API_KEY first.")
 
-    # In production this string arrives from the chat UI instead of being hardcoded.
-    text, _ = asyncio.run(run("Scan the latest day and give me the 1 most suspicious transaction."))
+    text, _ = asyncio.run(run("Run a compliance scan across all pending card applications."))
     print(text)

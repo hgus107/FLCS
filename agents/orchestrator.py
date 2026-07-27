@@ -12,6 +12,9 @@ import anthropic
 # REQUIREMENT: works whether started via app.py or run directly from the terminal.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from agents.fraud_agent import run as fraud_run
+from agents.loan_agent import run as loan_run
+from agents.compliance_agent import run as compliance_run
+from agents.support_agent import run as support_run
 
 MODEL = "claude-haiku-4-5"
 
@@ -48,7 +51,68 @@ TOOLS = [
             },
             "required": ["question"],
         },
-    }
+    },
+    {
+        "name": "ask_loan_agent",
+        "description": (
+            "Send a question to the credit analyst agent. It can look up loan "
+            "applications, a customer's borrowing history, applications awaiting "
+            "a decision, and affordability ratios, and it recommends approve, "
+            "decline or refer. Use it for anything about loans, lending, credit "
+            "scores, or affordability."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "A self-contained instruction for the loan agent.",
+                }
+            },
+            "required": ["question"],
+        },
+    },
+    {
+        "name": "ask_compliance_agent",
+        "description": (
+            "Send a question to the compliance analyst agent. It can list pending "
+            "credit-card applications, pull KYC records, screen names against the "
+            "OFAC sanctions list, and run a full compliance scan across all "
+            "applicants. Use it for anything about KYC, sanctions, screening, "
+            "onboarding, or card applications."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "A self-contained instruction for the compliance agent.",
+                }
+            },
+            "required": ["question"],
+        },
+    },    
+    {
+        "name": "ask_support_agent",
+        "description": (
+            "Send a question to the customer support agent. It searches the bank's "
+            "policy library and answers questions about rules and procedures — "
+            "disputes, lost or stolen cards, card blocks, fees and waivers, "
+            "complaints and escalation, identity verification, vulnerable "
+            "customers. Use it for any 'what is our policy' or 'how do we handle' "
+            "question. It has no access to customer accounts or transactions."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "A self-contained instruction for the support agent.",
+                }
+            },
+            "required": ["question"],
+        },
+    },
 ]
 
 
@@ -59,6 +123,20 @@ async def call_agent(name: str, args: dict) -> str:
         answer, _ = await fraud_run(args["question"])
         return answer
 
+    if name == "ask_loan_agent":
+        # REQUEST OUT: hand the instruction down to the loan agent, which runs its
+        # own loop against the lending MCP server.
+        answer, _ = await loan_run(args["question"])
+        return answer
+
+    if name == "ask_compliance_agent":
+        answer, _ = await compliance_run(args["question"])
+        return answer    
+
+    if name == "ask_support_agent":
+        answer, _ = await support_run(args["question"])
+        return answer
+    
     return f"No such agent: {name}"
 
 
@@ -87,20 +165,19 @@ async def run(user_request: str, history: list | None = None):
         if reply.stop_reason != "tool_use":
             break
 
-        results = []
-        for block in reply.content:
-            if block.type != "tool_use":
-                continue
-            print(f"ORCHESTRATOR DELEGATED TO: {block.name}")
+        calls = [b for b in reply.content if b.type == "tool_use"]
+        for b in calls:
+            print(f"ORCHESTRATOR DELEGATED TO: {b.name}")
 
-            out = await call_agent(block.name, block.input)
-            results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": out,
-                }
-            )
+        # REQUIREMENT: the specialists share nothing, so start them all at once and
+        # wait for the slowest rather than adding up their times. zip keeps each
+        # answer matched to the call that asked for it.
+        outs = await asyncio.gather(*(call_agent(b.name, b.input) for b in calls))
+
+        results = [
+            {"type": "tool_result", "tool_use_id": b.id, "content": out}
+            for b, out in zip(calls, outs)
+        ]
 
         messages.append({"role": "user", "content": results})
 
