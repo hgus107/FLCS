@@ -54,10 +54,21 @@ resource "aws_security_group" "flcs" {
     cidr_blocks = [var.ssh_cidr]
   }
 
+  # REQUIREMENT: the public only ever reaches Caddy, never the app. Port 8000 is
+  # deliberately absent here and the container binds to 127.0.0.1, so there is no
+  # way to skip the password prompt by hitting the app port directly.
   ingress {
-    description = "App"
-    from_port   = 8000
-    to_port     = 8000
+    description = "HTTP - redirects to HTTPS and answers ACME certificate challenges"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -75,6 +86,19 @@ resource "aws_instance" "flcs" {
   instance_type          = "t3.micro"
   key_name               = aws_key_pair.flcs.key_name
   vpc_security_group_ids = [aws_security_group.flcs.id]
+
+  # REQUIREMENT: 2 GB is not enough room for two container images. The original
+  # volume ran to 98% full, which would have taken the demo down on its own.
+  # 30 GB is both the minimum this AMI's snapshot allows and the free tier limit.
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+
+  # REQUIREMENT: user_data only ever runs on a first boot, so editing the script
+  # below has no effect unless the instance is replaced. This makes that explicit
+  # rather than leaving a change that silently does nothing.
+  user_data_replace_on_change = true
 
   # REQUIREMENT: runs once on first boot. Secrets are written to .env inside the
   # box rather than baked into the image.
@@ -94,16 +118,58 @@ resource "aws_instance" "flcs" {
     printf 'SERVICENOW_PASSWORD=%s\n' '${var.servicenow_password}' >> .env
 
     docker build -t flcs .
-    docker run -d --restart unless-stopped -p 8000:8000 --env-file .env flcs
+
+    # Bound to 127.0.0.1 on purpose: the app is reachable only from inside the
+    # box, so every request from outside has to pass through Caddy's password
+    # prompt first.
+    docker run -d --restart unless-stopped --name flcs \
+      -p 127.0.0.1:8000:8000 --env-file .env flcs
+
+    # Caddy fetches and renews the Let's Encrypt certificate on its own, checks
+    # the password, then forwards to the app. The quoted heredoc matters - the
+    # bcrypt hash contains dollar signs the shell would otherwise mangle.
+    mkdir -p /etc/caddy
+    cat > /etc/caddy/Caddyfile <<'CADDYFILE'
+    ${var.domain} {
+        basic_auth {
+            ${var.basic_auth_user} ${var.basic_auth_hash}
+        }
+        reverse_proxy 127.0.0.1:8000
+    }
+    CADDYFILE
+
+    # Host networking so Caddy can bind 80 and 443 and still reach the app on
+    # localhost. The named volume keeps the certificate across restarts, which
+    # matters because Let's Encrypt rate-limits repeat requests.
+    docker run -d --restart unless-stopped --name caddy --network host \
+      -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+      -v caddy_data:/data \
+      -v caddy_config:/config \
+      caddy:2
   EOF
 
   tags = { Name = "flcs-demo" }
+
+  # REQUIREMENT: do not rebuild the box just because Amazon published a newer
+  # AL2023 image. Without this, every apply destroys the running demo and the
+  # public link goes dead for several minutes. Change the AMI deliberately, by
+  # tainting the instance, not as a side effect of an unrelated change.
+  lifecycle {
+    ignore_changes = [ami]
+  }
+}
+
+# REQUIREMENT: a fixed public address. Without it the IP changes every time the
+# instance stops and starts, which breaks DNS and any link already handed out.
+resource "aws_eip" "flcs" {
+  instance = aws_instance.flcs.id
+  domain   = "vpc"
 }
 
 output "app_url" {
-  value = "http://${aws_instance.flcs.public_ip}:8000"
+  value = "https://${var.domain}"
 }
 
 output "ssh" {
-  value = "ssh -i infra/flcs-key.pem ec2-user@${aws_instance.flcs.public_ip}"
+  value = "ssh -i infra/flcs-key.pem ec2-user@${aws_eip.flcs.public_ip}"
 }

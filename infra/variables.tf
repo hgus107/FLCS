@@ -24,3 +24,21 @@ variable "servicenow_user" {}
 variable "servicenow_password" {
   sensitive = true
 }
+
+# The hostname Caddy requests a certificate for. It must already resolve to this
+# instance's Elastic IP before the box boots, or the certificate request fails.
+variable "domain" {
+  description = "Public hostname served over HTTPS"
+}
+
+variable "basic_auth_user" {
+  description = "Username for the password prompt in front of the demo"
+  default     = "demo"
+}
+
+# A bcrypt hash, not the password. Generated with:
+#   htpasswd -bnBC 12 "" 'the-password' | tr -d ':\n'
+variable "basic_auth_hash" {
+  description = "Bcrypt hash of the demo password"
+  sensitive   = true
+}
